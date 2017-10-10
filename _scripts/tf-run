@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+if [ -n "$DEBUG" ]
+then
+  set -x
+fi
+
+set -ue -o pipefail
+
+
+
+if [ $# -lt 2 ]
+then
+  echo "tf-run"
+  echo
+  echo "Usage: <directory> <command ...>"
+  echo "Directory: supply the path to the directory containing the terraform config to run"
+  echo "Command: supply one or more commands and/or arugments to run with terraform"
+  exit 1
+fi
+
+TARGET=$(echo $1 | cut -d / -f 1-2)
+COLLECTION=$(echo $TARGET | cut -d / -f 1)
+COMPONENT=$(echo $TARGET | cut -d / -f 2)
+
+if [ ! -d ${TARGET} ]
+then
+  echo "ERROR: it seems the supplied path isn't a valid directory, exiting!"
+  exit 1
+elif [ -z "$(find ${TARGET} -maxdepth 1 -name \*.tf)" ]
+then
+  echo "ERROR: no *.tf files present at the supplied path, exiting!"
+  exit 1
+fi
+
+cd ${TARGET}
+terraform ${@:2}
+TERRAFORM_EXIT_STATUS=$?
+cd -
+exit ${TERRAFORM_EXIT_STATUS}

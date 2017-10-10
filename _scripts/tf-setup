@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+
+if [ -n "$DEBUG" ]
+then
+  set -x
+fi
+
+set -ue -o pipefail
+
+
+# Check if we have something to process
+if [ $# -ne 1 ]
+then
+  echo "tf-setup"
+  echo
+  echo "Usage: please supply the path to the directory containing the terraform config to setup"
+  exit 1
+fi
+
+
+# Parse our input into useful elements
+TARGET=$(echo $1 | cut -d / -f 1-2)
+COLLECTION=$(echo $TARGET | cut -d / -f 1)
+COMPONENT=$(echo $TARGET | cut -d / -f 2)
+SHARED_DIRS=(_shared ${COLLECTION}/_shared)
+
+
+# Check the parsed target actually exist
+if [ ! -d ${TARGET} ]
+then
+  echo "ERROR: it seems the supplied path isn't a valid directory, exiting!"
+  exit 1
+elif [ -z "$(find ${TARGET} -maxdepth 1 -name \*.tf)" ]
+then
+  echo "ERROR: no *.tf files present at the supplied path, exiting!"
+  exit 1
+fi
+
+
+# Make sure our shared directory hierarchy exists, if not create it
+for DIR in ${SHARED_DIRS[*]};
+do
+  if [ ! -d ${DIR} ]
+  then
+    echo "WARN: ${DIR} is missing, creating now."
+    mkdir ${DIR}
+  fi
+done
+
+
+# Check our target has the _modules folder symlinked
+if [ -d ${PWD}/_modules ] &&
+   [ ! -L ${PWD}/${TARGET}/_modules ]
+then
+  ln -s ${PWD}/_modules ${PWD}/${TARGET}/_modules
+fi
+
+
+# Helper function to compile terraform shared files
+function compile_shared_files {
+  INPUT_FILES=$(find ${SHARED_DIRS[*]} -name \*.${1})
+
+  # Check if we have anything to process
+  if [ -z "${INPUT_FILES}" ]
+  then
+    # Nothing to do, but not an error necessarily
+    exit
+  fi
+
+  cat /dev/null > ${TARGET}/terraform.${1}
+  
+  for FILE in $INPUT_FILES;
+  do
+    echo >> ${TARGET}/terraform.${1}
+    cat ${FILE} >> ${TARGET}/terraform.${1}
+  done
+}
+
+
+# Call our helper for all .tf and .tfvars files
+compile_shared_files tf
+compile_shared_files tfvars

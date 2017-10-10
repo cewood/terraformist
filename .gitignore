@@ -1,0 +1,6 @@
+**/**/_modules
+!/_modules
+.*.swp
+.terraform
+terraform.*
+!terraform.tfstate

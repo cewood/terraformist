@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+if [ -n "$DEBUG" ]
+then
+  set -x
+fi
+
+set -ue -o pipefail
+
+
+
+if [ $# -ne 1 ]
+then
+  echo "tf-cleanup"
+  echo
+  echo "Usage: <directory>"
+  echo "Directory: supply the path to the directory containing the terraform config to cleanup"
+  exit 1
+fi
+
+TARGET=$(echo $1 | cut -d / -f 1-2)
+COLLECTION=$(echo $TARGET | cut -d / -f 1)
+COMPONENT=$(echo $TARGET | cut -d / -f 2)
+
+if [ ! -d ${TARGET} ]
+then
+  echo "ERROR: it seems the supplied path isn't a valid directory, exiting!"
+  exit 1
+elif [ -f ${TARGET}/terraform.tfplan ]
+then
+  rm -f ${TARGET}/terraform.tfplan
+  exit
+fi
